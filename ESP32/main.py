@@ -23,8 +23,8 @@ with open('wlan_config.json') as w_conf:
             print("System time set")
             ntptime.settime()
             print(wlan.ifconfig())
-            #wlan.disconnect()
-            #wlan.active(False)
+            # wlan.disconnect()
+            # wlan.active(False)
             break
         time.sleep(1)
 
@@ -50,25 +50,50 @@ avgHumBuff = [0, 0, 0, 0, 0]
 count = 0
 secCount = 0
 
-
 matrix_mode = ''
 req_mode = 'tmp'
 
 while True:
     try:
         cl, addr = s.accept()
-        req_path = str(cl.makefile('rwb', 0).readline()).split(' ')
-        if len(req_path) > 1:
-            print(req_path[1])
-            req_path = req_path[1]
-        cl.send('200')
-        cl.close()
+        tmp = cl.makefile('rwb', 0)
+        req_path = bytes(tmp.readline()).decode('UTF-8').split(' ')
 
-        if req_path.startswith('/matrix'):
-            if req_path.endswith('/tmp'):
+        content_length = 0
+        while True:
+            line = bytes(tmp.readline()).decode('UTF-8')
+            if line.startswith('Content-Length'):
+                content_length = int(line.split(':')[1].strip(' '))
+            if line == '\r\n':
+                break
+
+        body = bytes(tmp.read(content_length)).decode('UTF-8')
+
+        print(req_path)
+        if req_path[1].startswith('/matrix'):
+            if req_path[1].endswith('/tmp'):
                 req_mode = 'tmp'
-            if req_path.endswith('/hum'):
+            if req_path[1].endswith('/hum'):
                 req_mode = 'hum'
+
+        if req_path[1].startswith('/storage'):
+            print(req_path[0])
+            if req_path[0] == 'GET':
+                msg = persistence.decodeWholeFile()
+                cl.sendall('HTTP/1.1 200 OK\r\n' +
+                           'Content-Type:text/html; encoding=utf8\r\n' +
+                           'Content-Length:' + str(len(msg)) + '\r\n' +
+                           'Connection:close\r\n\r\n' +
+                           msg)
+
+            if req_path[0] == 'POST':
+                persistence.overrideFile(body)
+
+                cl.sendall('HTTP/1.1 200 OK\r\n' +
+                           'Content-Type:text/html; encoding=utf8\r\n' +
+                           'Connection:close\r\n\r\n')
+
+        cl.close()
     except OSError:
         pass
 
@@ -120,4 +145,4 @@ while True:
     else:
         secCount += 1
 
-    time.sleep_ms(500)
+    time.sleep_ms(1000)

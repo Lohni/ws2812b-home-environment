@@ -1,6 +1,6 @@
 i = [21.8, 21.6, 21.9, 21.2, 21.3]
-i = sum(i) / 5
-j = 44.2
+i = 20.5
+j = 40
 
 # Byte-Composition for Sensor-Data:
 # AAAABBBB | BCCCCCCC
