@@ -32,3 +32,6 @@ humidity = secondByte & 0b01111111
 
 print("Temp: " + str(tempDec+tempComma))
 print("Humidity: " + str(humidity))
+
+a = b'\x07\xe6'
+print(int.from_bytes(a, 'big'))

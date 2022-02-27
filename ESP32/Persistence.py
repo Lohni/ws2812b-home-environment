@@ -2,7 +2,6 @@ import time
 import uos as os
 import io
 
-
 class Persistence:
     def __init__(self):
         dataFileName = "sensorData.txt"
@@ -11,7 +10,7 @@ class Persistence:
             x.close()
         print("Initialized Persistence.__init__()")
 
-    def sensorDataToBytes(self, temp: float, humidity: float) -> bytes:
+    async def sensorDataToBytes(self, temp: float, humidity: float) -> bytes:
         # Byte-Composition for Sensor-Data:
         # AAAABBBB | BCCCCCCC
         # A -> 4Bit for Temp. comma -> 0-9 / 16
@@ -41,84 +40,88 @@ class Persistence:
 
         return [tempDec + tempComma, humidity]
 
-    def persistValue(self, temperature: float, humidity: float):
+    async def persistValue(self, temperature: float, humidity: float):
         currDateMEZ = time.localtime(self.getCurrentMEZ())
         print(currDateMEZ)
 
         dataFile = open('sensorData.txt', 'ab+')
 
+        matchOrder = ['yy:'.encode() + int(currDateMEZ[0]).to_bytes(2, 'big'),
+                      'mm:'.encode() + int(currDateMEZ[1]).to_bytes(2, 'big'),
+                      'dd:'.encode() + int(currDateMEZ[2]).to_bytes(2, 'big'),
+                      'hh:'.encode() + int(currDateMEZ[3]).to_bytes(2, 'big')]
         # Todo: year/month/hour/day entry ints with to_bytes ---> TEST
 
-        entryYear = 0
-        while entryYear != currDateMEZ[0]:
-            yearLine = dataFile.readline()
-            if yearLine.startswith('year'.encode()):
-                entryYear = int(yearLine.split(":".encode())[1])
-            elif yearLine == ''.encode():
-                dataFile.write('year:'.encode() + int(currDateMEZ[0]).to_bytes(2, 'big') + '\n'.encode())
-                entryYear = currDateMEZ[0]
+        while True:
+            line = dataFile.read(5)
+            if line.startswith(matchOrder[0]):
+                break
+
+            if line == ''.encode():
+                dataFile.write('yy:'.encode() + int(currDateMEZ[0]).to_bytes(2, 'big'))
                 print('Created Year entry')
+                break
 
-        entryMonth = 0
-        while entryMonth != currDateMEZ[1]:
-            monthLine = dataFile.readline()
-            if monthLine.startswith('month'.encode()):
-                entryMonth = int(monthLine.split(":".encode())[1])
-            elif monthLine == ''.encode():
-                dataFile.write('month:'.encode() + int(currDateMEZ[1]).to_bytes(1, 'big') + '\n'.encode())
-                entryMonth = currDateMEZ[1]
+        while True:
+            line = dataFile.read(5)
+            if line.startswith(matchOrder[1]):
+                break
+
+            if line == ''.encode():
+                dataFile.write('mm:'.encode() + int(currDateMEZ[1]).to_bytes(2, 'big'))
                 print('Created Month entry')
+                break
 
-        entryDay = 0
-        while entryDay != currDateMEZ[2]:
-            dayLine = dataFile.readline()
-            if dayLine.startswith('day'.encode()):
-                entryDay = int(dayLine.split(":".encode())[1])
-            elif dayLine == ''.encode():
-                dataFile.write('day:'.encode() + int(currDateMEZ[2]).to_bytes(1, 'big') + '\n'.encode())
-                entryDay = currDateMEZ[2]
+        while True:
+            line = dataFile.read(5)
+            if line.startswith(matchOrder[2]):
+                break
+
+            if line == ''.encode():
+                dataFile.write('dd:'.encode() + int(currDateMEZ[2]).to_bytes(2, 'big'))
                 print('Created Day entry')
+                break
 
-        entryHour = 0
-        while entryHour != currDateMEZ[3]:
-            hourLine = dataFile.readline()
-            if hourLine.startswith('hour'.encode()):
-                entryHour = int(hourLine.split(":".encode())[1])
-            elif hourLine == ''.encode():
-                dataFile.write('hour:'.encode() + int(currDateMEZ[3]).to_bytes(1, 'big') + '\n'.encode())
-                entryHour = currDateMEZ[3]
+        while True:
+            line = dataFile.read(5)
+            if line.startswith(matchOrder[3]):
+                break
+
+            if line == ''.encode():
+                dataFile.write('hh:'.encode() + int(currDateMEZ[3]).to_bytes(2, 'big'))
                 print('Created Hour entry')
+                break
 
         # Now we know that the Data-Structure exists -> save Data
         minute_mark = int(currDateMEZ[4] / 5) * 5
         data = self.sensorDataToBytes(temperature, humidity)
-        dataFile.write(minute_mark.to_bytes(1, 'big'))
-        dataFile.write(':'.encode() + data + '\n'.encode())
+        dataFile.write(minute_mark.to_bytes(2, 'big'))
+        dataFile.write(':'.encode() + data)
         dataFile.close()
 
     def getDataByTimestamp(self, timestamp: []):
         dataFile = open('sensorData.txt', 'rb')
 
-        matchOrder = ['year:'.encode() + int(timestamp[0]).to_bytes(2, 'big'),
-                      'month:'.encode() + int(timestamp[1]).to_bytes(1, 'big'),
-                      'day:'.encode() + int(timestamp[2]).to_bytes(1, 'big'),
-                      'hour:'.encode() + int(timestamp[3]).to_bytes(1, 'big')]
+        matchOrder = ['yy:'.encode() + int(timestamp[0]).to_bytes(2, 'big'),
+                      'mm:'.encode() + int(timestamp[1]).to_bytes(2, 'big'),
+                      'dd:'.encode() + int(timestamp[2]).to_bytes(2, 'big'),
+                      'hh:'.encode() + int(timestamp[3]).to_bytes(2, 'big')]
 
         dataTime = int(timestamp[4] / 5) * 5
         data = ''
 
         currentMtcIndex = 0
 
-        line = dataFile.readline()
-        while data == '' and line != '':
+        line = dataFile.read(5)
+        while data == '' and line[0] != ''.encode():
             if line.__contains__(matchOrder[currentMtcIndex]) and currentMtcIndex <= 3:
                 currentMtcIndex += 1
 
             if currentMtcIndex == 4:
-                if int(line[0]) == dataTime:
+                if line.startswith(dataTime.to_bytes(2, 'big')):
                     data = line
 
-            line = dataFile.readline()
+            line = dataFile.read(5)
 
         dataFile.close()
         if data != '':
@@ -131,23 +134,18 @@ class Persistence:
 
         body = ''
         while True:
-            line = dataFile.readline()
-            print(line)
-            dec_line = line.decode()
+            line = dataFile.read(5).split(':'.encode())
+            line_start = line[0].decode()
 
-            if dec_line == '':
+            if line_start == '':
                 break
 
-            if dec_line.startswith('year') or dec_line.startswith('month') \
-                    or dec_line.startswith('day') or dec_line.startswith('hour'):
-                line = line.split(':'.encode())
-                body = body + line[0].decode() + str(int(line[1]))
+            if line_start.startswith('yy') or line_start.startswith('mm') \
+                    or line_start.startswith('dd') or line_start.startswith('hh'):
+                body = body + line_start + ':' + str(int.from_bytes(line[1], 'big')) + '\n'
             else:
-                if len(dec_line) >= 4:
-                    body = body + str(int(line[0])) + ':' + str(
-                        self.persistedBytesToValues(line.split(':'.encode(), 1)[1])) + '\n'
-                else:
-                    body = body + str(self.persistedBytesToValues(line)) + '\n'
+                body = body + str(int.from_bytes(line[0], 'big')) + ':' + str(
+                    self.persistedBytesToValues(line[1])) + '\n'
 
         dataFile.close()
         return body
@@ -157,18 +155,17 @@ class Persistence:
 
         buf = io.StringIO(data)
         while True:
-            line = buf.readline()
+            line = buf.readline().strip()
 
             if line == '':
                 break
 
-            if line.startswith('year') or line.startswith('month') \
-                    or line.startswith('day') or line.startswith('hour'):
-                dataFile.write(line.encode())
+            line = line.split(':')
+            if line[0].startswith('yy') or line[0].startswith('mm') or line[0].startswith('dd') or line[0].startswith('hh'):
+                dataFile.write(line[0].encode() + ':'.encode() + int(line[1].strip()).to_bytes(2, 'big'))
             else:
-                line = line.split(':')
                 sensorData = line[1].replace('[', '').replace(']', '').replace(' ', '').split(',')
-                dataFile.write((int(line[0]).to_bytes(1, 'big') + ':'.encode() + self.sensorDataToBytes(
+                dataFile.write((int(line[0]).to_bytes(2, 'big') + ':'.encode() + self.sensorDataToBytes(
                     float(sensorData[0]), int(sensorData[1]))))
 
         dataFile.close()

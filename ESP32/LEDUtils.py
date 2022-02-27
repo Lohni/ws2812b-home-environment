@@ -1,6 +1,4 @@
 import neopixel
-import uasyncio
-import neopixel
 import machine
 
 #

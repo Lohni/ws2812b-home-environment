@@ -9,6 +9,18 @@ import ntptime
 import usocket
 import uasyncio
 
+
+async def persistenceCounter(dht: dht.DHT22):
+    await uasyncio.sleep(10)
+    tmp = dht.temperature()
+    hum = dht.humidity()
+    # persistence.persistValue(dhtSensor.temperature(), dhtSensor.humidity())
+
+    print("Temperature: " + tmp)
+    print("Humidity: " + hum)
+    print("Persisted Data!")  # Todo Timestamp?
+
+
 # load wlan config
 with open('wlan_config.json') as w_conf:
     wlan_data = json.loads(w_conf.read())
@@ -43,12 +55,6 @@ ledUtil = LEDUtils(n)
 persistence = Persistence()
 
 padding = 0
-
-avgTmpBuff = [0, 0, 0, 0, 0]
-avgHumBuff = [0, 0, 0, 0, 0]
-
-count = 0
-secCount = 0
 
 matrix_mode = ''
 req_mode = 'tmp'
@@ -121,28 +127,6 @@ while True:
 
     padding += 1
 
-    if secCount == 120:
-        avgTmpBuff[count] = dhtSensor.temperature()
-        avgHumBuff[count] = dhtSensor.humidity()
-
-        if count == 4:
-            avgTmp = sum(avgTmpBuff) / 5
-            avgHum = sum(avgHumBuff) / 5
-
-            persistence.persistValue(avgTmp, avgHum)
-
-            print("Temperature Buffer: " + ', '.join(map(str, avgTmpBuff)))
-            print("Humidity Buffer: " + ', '.join(map(str, avgHumBuff)))
-            print("Persisted Data!")  # Todo Timestamp?
-
-            avgTmpBuff = [0] * 5
-            avgHumBuff = [0] * 5
-            count = 0
-        else:
-            count += 1
-        secCount = 1
-
-    else:
-        secCount += 1
-
     time.sleep_ms(1000)
+
+# Todo: Error notification to Matrix, save error to file?, error interface via http to see whats happening
