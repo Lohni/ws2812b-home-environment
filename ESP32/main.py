@@ -9,18 +9,6 @@ import ntptime
 import usocket
 import uasyncio
 
-
-async def persistenceCounter(dht: dht.DHT22):
-    await uasyncio.sleep(10)
-    tmp = dht.temperature()
-    hum = dht.humidity()
-    # persistence.persistValue(dhtSensor.temperature(), dhtSensor.humidity())
-
-    print("Temperature: " + tmp)
-    print("Humidity: " + hum)
-    print("Persisted Data!")  # Todo Timestamp?
-
-
 # load wlan config
 with open('wlan_config.json') as w_conf:
     wlan_data = json.loads(w_conf.read())
@@ -54,10 +42,10 @@ dhtSensor = dht.DHT22(machine.Pin(26))
 ledUtil = LEDUtils(n)
 persistence = Persistence()
 
-padding = 0
-
 matrix_mode = ''
 req_mode = 'tmp'
+
+last_persisted_minute = None  # reduce unnecessary file parsing
 
 while True:
     try:
@@ -111,11 +99,6 @@ while True:
     tmp = str(dhtSensor.temperature()) + '°C'
     hum = str(int(dhtSensor.humidity())) + '%'
 
-    if padding >= 32:
-        padding = 0
-
-    # ledUtil.runningText(s.upper(), padding)
-
     if req_mode == 'tmp' and matrix_mode != 'tmp':
         matrix_mode = 'tmp'
         uasyncio.run(ledUtil.writeStringToMatrix(tmp))
@@ -125,8 +108,18 @@ while True:
         uasyncio.run(ledUtil.writeStringToMatrix(hum))
         print('Selected HUM-Mode')
 
-    padding += 1
+    local_time = time.localtime(persistence.getCurrentMEZ())
+    current_min = local_time[4]
+    if current_min % 5 == 0 and current_min != last_persisted_minute:
+        tmp = dht.temperature()
+        hum = dht.humidity()
+        persistence.persistValue(dhtSensor.temperature(), dhtSensor.humidity(), local_time)
+
+        last_persisted_minute = current_min
+        print("Temperature: " + tmp)
+        print("Humidity: " + hum)
+        print("Persisted Data!")  # Todo Timestamp?
 
     time.sleep_ms(1000)
 
-# Todo: Error notification to Matrix, save error to file?, error interface via http to see whats happening
+# Todo: Error notification to Matrix, save error to file/ var?, error interface via http to see whats happening

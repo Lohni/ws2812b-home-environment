@@ -2,6 +2,7 @@ import time
 import uos as os
 import io
 
+
 class Persistence:
     def __init__(self):
         dataFileName = "sensorData.txt"
@@ -10,7 +11,7 @@ class Persistence:
             x.close()
         print("Initialized Persistence.__init__()")
 
-    async def sensorDataToBytes(self, temp: float, humidity: float) -> bytes:
+    def sensorDataToBytes(self, temp: float, humidity: float) -> bytes:
         # Byte-Composition for Sensor-Data:
         # AAAABBBB | BCCCCCCC
         # A -> 4Bit for Temp. comma -> 0-9 / 16
@@ -40,8 +41,7 @@ class Persistence:
 
         return [tempDec + tempComma, humidity]
 
-    async def persistValue(self, temperature: float, humidity: float):
-        currDateMEZ = time.localtime(self.getCurrentMEZ())
+    async def persistValue(self, temperature: float, humidity: float, currDateMEZ: time):
         print(currDateMEZ)
 
         dataFile = open('sensorData.txt', 'ab+')
@@ -50,7 +50,6 @@ class Persistence:
                       'mm:'.encode() + int(currDateMEZ[1]).to_bytes(2, 'big'),
                       'dd:'.encode() + int(currDateMEZ[2]).to_bytes(2, 'big'),
                       'hh:'.encode() + int(currDateMEZ[3]).to_bytes(2, 'big')]
-        # Todo: year/month/hour/day entry ints with to_bytes ---> TEST
 
         while True:
             line = dataFile.read(5)
@@ -92,11 +91,22 @@ class Persistence:
                 print('Created Hour entry')
                 break
 
+        minuteEntryExists = False
+        while True:
+            line = dataFile.read(5)
+            if line.startswith(int(currDateMEZ[4]).to_bytes(2, 'big') + ':'.encode()):
+                minuteEntryExists = True
+                break
+
+            if line == ''.encode():
+                break
+
         # Now we know that the Data-Structure exists -> save Data
-        minute_mark = int(currDateMEZ[4] / 5) * 5
-        data = self.sensorDataToBytes(temperature, humidity)
-        dataFile.write(minute_mark.to_bytes(2, 'big'))
-        dataFile.write(':'.encode() + data)
+        if not minuteEntryExists:
+            data = self.sensorDataToBytes(temperature, humidity)
+            dataFile.write(int(currDateMEZ[4]).to_bytes(2, 'big'))
+            dataFile.write(':'.encode() + data)
+
         dataFile.close()
 
     def getDataByTimestamp(self, timestamp: []):
@@ -161,7 +171,8 @@ class Persistence:
                 break
 
             line = line.split(':')
-            if line[0].startswith('yy') or line[0].startswith('mm') or line[0].startswith('dd') or line[0].startswith('hh'):
+            if line[0].startswith('yy') or line[0].startswith('mm') or line[0].startswith('dd') or line[0].startswith(
+                    'hh'):
                 dataFile.write(line[0].encode() + ':'.encode() + int(line[1].strip()).to_bytes(2, 'big'))
             else:
                 sensorData = line[1].replace('[', '').replace(']', '').replace(' ', '').split(',')
