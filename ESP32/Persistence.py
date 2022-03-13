@@ -5,6 +5,7 @@ import io
 
 class Persistence:
     def __init__(self):
+        self.last_persisted_minute = None
         dataFileName = "sensorData.txt"
         if dataFileName not in os.listdir():
             x = open(dataFileName, 'x')
@@ -108,6 +109,7 @@ class Persistence:
             dataFile.write(':'.encode() + data)
 
         dataFile.close()
+        self.last_persisted_minute = currDateMEZ[4]
 
     def getDataByTimestamp(self, timestamp: []):
         dataFile = open('sensorData.txt', 'rb')
