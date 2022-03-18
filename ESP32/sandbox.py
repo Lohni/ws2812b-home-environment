@@ -1,5 +1,5 @@
 i = [21.8, 21.6, 21.9, 21.2, 21.3]
-i = 20.5
+i = float(20.5)
 j = 40
 
 # Byte-Composition for Sensor-Data:

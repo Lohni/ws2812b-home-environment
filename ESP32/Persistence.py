@@ -5,7 +5,7 @@ import io
 
 class Persistence:
     def __init__(self):
-        self.last_persisted_minute = None
+        self.last_persisted_minute = -1
         dataFileName = "sensorData.txt"
         if dataFileName not in os.listdir():
             x = open(dataFileName, 'x')
@@ -42,9 +42,7 @@ class Persistence:
 
         return [tempDec + tempComma, humidity]
 
-    async def persistValue(self, temperature: float, humidity: float, currDateMEZ: time):
-        print(currDateMEZ)
-
+    def persistValue(self, temperature: float, humidity: float, currDateMEZ: time):
         dataFile = open('sensorData.txt', 'ab+')
 
         matchOrder = ['yy:'.encode() + int(currDateMEZ[0]).to_bytes(2, 'big'),
@@ -120,13 +118,12 @@ class Persistence:
                       'hh:'.encode() + int(timestamp[3]).to_bytes(2, 'big')]
 
         dataTime = int(timestamp[4] / 5) * 5
-        data = ''
+        data = ''.encode()
 
         currentMtcIndex = 0
-
         line = dataFile.read(5)
-        while data == '' and line[0] != ''.encode():
-            if line.__contains__(matchOrder[currentMtcIndex]) and currentMtcIndex <= 3:
+        while data == ''.encode() and line != ''.encode():
+            if currentMtcIndex <= 3 and line == (matchOrder[currentMtcIndex]):
                 currentMtcIndex += 1
 
             if currentMtcIndex == 4:
@@ -136,10 +133,11 @@ class Persistence:
             line = dataFile.read(5)
 
         dataFile.close()
-        if data != '':
+
+        if data != ''.encode():
             return self.persistedBytesToValues(data.split(':'.encode(), 1)[1])
 
-        return [0, 0]
+        return []
 
     def decodeWholeFile(self):
         dataFile = open('sensorData.txt', 'rb')
