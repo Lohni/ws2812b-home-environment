@@ -63,6 +63,7 @@ class LEDUtils:
     def __init__(self, led_count: int):
         self.np = neopixel.NeoPixel(machine.Pin(2), led_count)
         self.rotation = 1
+        self.color = (10, 5, 6)
 
     async def writeStringToMatrix(self, s: str):
         self.np.fill((0, 0, 0))
@@ -81,6 +82,8 @@ class LEDUtils:
         matrixWidth = 32
         startIndex = char_position * 3
 
+        txt_color = self.color
+
         if seperator:
             # 1 led padding between letters
             startIndex += char_position
@@ -90,27 +93,27 @@ class LEDUtils:
                 if pos < 3:
                     self.np[startIndex + pos] = (10, 5, 6)
                 elif pos < 6:
-                    self.np[-startIndex + (matrixWidth * 2 - 1) + (3 - pos)] = (10, 5, 6)
+                    self.np[-startIndex + (matrixWidth * 2 - 1) + (3 - pos)] = txt_color
                 elif pos < 9:
-                    self.np[startIndex + (matrixWidth * 2) + (6 - pos) * -1] = (10, 5, 6)
+                    self.np[startIndex + (matrixWidth * 2) + (6 - pos) * -1] = txt_color
                 elif pos < 12:
-                    self.np[-startIndex + (matrixWidth * 4 - 1) + (9 - pos)] = (10, 5, 6)
+                    self.np[-startIndex + (matrixWidth * 4 - 1) + (9 - pos)] = txt_color
                 else:
-                    self.np[startIndex + (matrixWidth * 4) + (12 - pos) * -1] = (10, 5, 6)
+                    self.np[startIndex + (matrixWidth * 4) + (12 - pos) * -1] = txt_color
         else:
             startIndex = 224 + startIndex
             row_pos = matrixWidth - (256 - startIndex)
             for pos in char:
                 if pos < 3:
-                    self.np[startIndex + pos] = (10, 5, 6)
+                    self.np[startIndex + pos] = txt_color
                 elif pos < 6:
-                    self.np[startIndex - (row_pos * 2 - 1) - (pos - 3) - 2] = (10, 5, 6)
+                    self.np[startIndex - (row_pos * 2 - 1) - (pos - 3) - 2] = txt_color
                 elif pos < 9:
-                    self.np[startIndex - matrixWidth*2 + (pos - 6)] = (10, 5, 6)
+                    self.np[startIndex - matrixWidth*2 + (pos - 6)] = txt_color
                 elif pos < 12:
-                    self.np[startIndex - (row_pos + matrixWidth) * 2 - 1 - (pos - 9)] = (10, 5, 6)
+                    self.np[startIndex - (row_pos + matrixWidth) * 2 - 1 - (pos - 9)] = txt_color
                 else:
-                    self.np[startIndex - matrixWidth * 4 + (pos - 12)] = (10, 5, 6)
+                    self.np[startIndex - matrixWidth * 4 + (pos - 12)] = txt_color
 
         return
 

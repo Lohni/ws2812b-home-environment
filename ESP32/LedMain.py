@@ -74,6 +74,7 @@ class LedMain:
                 # Todo: calc color hues https://www.colorspire.com/rgb-color-wheel/
 
                 print(tmp_color)
+                self.ledUtil.color = tmp_color
                 uasyncio.run(self.ledUtil.writeStringToMatrix(tmp))
 
             current_min = local_time[4]
