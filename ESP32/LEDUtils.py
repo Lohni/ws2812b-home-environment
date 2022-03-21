@@ -12,6 +12,9 @@ import machine
 # |     |     |
 # 12 -  13 -  14
 #
+import time
+
+import uasyncio
 
 font = {
     "A": [1, 3, 5, 6, 7, 8, 9, 11, 12, 14],
@@ -46,7 +49,7 @@ font = {
     "4": [0, 3, 5, 6, 7, 8, 11, 14],
     "5": [0, 1, 2, 3, 6, 7, 8, 11, 12, 13, 14],
     "6": [0, 1, 2, 3, 6, 7, 8, 9, 11, 12, 13, 14],
-    "7": [0, 1, 2, 5, 8, 11, 14],
+    "7": [0, 1, 2, 3, 5, 8, 11, 14],
     "8": [0, 1, 2, 3, 5, 6, 7, 8, 9, 11, 12, 13, 14],
     "9": [0, 1, 2, 3, 5, 6, 7, 8, 11, 12, 13, 14],
     "0": [0, 1, 2, 3, 5, 6, 8, 9, 11, 12, 13, 14],
@@ -59,6 +62,7 @@ font = {
 class LEDUtils:
     def __init__(self, led_count: int):
         self.np = neopixel.NeoPixel(machine.Pin(2), led_count)
+        self.rotation = 1
 
     async def writeStringToMatrix(self, s: str):
         self.np.fill((0, 0, 0))
@@ -69,6 +73,7 @@ class LEDUtils:
 
             position = font.get(char)
             self.writeCharToMatrix(position, pos, seperator)
+        self.np.write()
 
     def writeCharToMatrix(self, char: [], char_position, seperator: bool):
         # width of matrix : 32, char width : 3 + 1 padding
@@ -80,18 +85,34 @@ class LEDUtils:
             # 1 led padding between letters
             startIndex += char_position
 
-        for pos in char:
-            if pos < 3:
-                self.np[startIndex + pos] = (10, 5, 6)
-            elif pos < 6:
-                self.np[-startIndex + (matrixWidth * 2 - 1) + (3 - pos)] = (10, 5, 6)
-            elif pos < 9:
-                self.np[startIndex + (matrixWidth * 2) + (6 - pos) * -1] = (10, 5, 6)
-            elif pos < 12:
-                self.np[-startIndex + (matrixWidth * 4 - 1) + (9 - pos)] = (10, 5, 6)
-            else:
-                self.np[startIndex + (matrixWidth * 4) + (12 - pos) * -1] = (10, 5, 6)
-        self.np.write()
+        if self.rotation == 0:
+            for pos in char:
+                if pos < 3:
+                    self.np[startIndex + pos] = (10, 5, 6)
+                elif pos < 6:
+                    self.np[-startIndex + (matrixWidth * 2 - 1) + (3 - pos)] = (10, 5, 6)
+                elif pos < 9:
+                    self.np[startIndex + (matrixWidth * 2) + (6 - pos) * -1] = (10, 5, 6)
+                elif pos < 12:
+                    self.np[-startIndex + (matrixWidth * 4 - 1) + (9 - pos)] = (10, 5, 6)
+                else:
+                    self.np[startIndex + (matrixWidth * 4) + (12 - pos) * -1] = (10, 5, 6)
+        else:
+            startIndex = 224 + startIndex
+            row_pos = matrixWidth - (256 - startIndex)
+            for pos in char:
+                if pos < 3:
+                    self.np[startIndex + pos] = (10, 5, 6)
+                elif pos < 6:
+                    self.np[startIndex - (row_pos * 2 - 1) - (pos - 3) - 2] = (10, 5, 6)
+                elif pos < 9:
+                    self.np[startIndex - matrixWidth*2 + (pos - 6)] = (10, 5, 6)
+                elif pos < 12:
+                    self.np[startIndex - (row_pos + matrixWidth) * 2 - 1 - (pos - 9)] = (10, 5, 6)
+                else:
+                    self.np[startIndex - matrixWidth * 4 + (pos - 12)] = (10, 5, 6)
+
+        return
 
     async def runningText(self, s, padding):
         self.np.fill((0, 0, 0))
