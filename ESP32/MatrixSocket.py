@@ -3,7 +3,7 @@ import usocket
 import json
 import ntptime
 import time
-
+import machine
 import Persistence
 
 
@@ -47,6 +47,9 @@ class MatrixSocket:
             req_path = bytes(tmp.readline()).decode('UTF-8').split(' ')
             req_mode = ""
             content_length = 0
+
+            reset = False
+
             while True:
                 line = bytes(tmp.readline()).decode('UTF-8')
                 if line.startswith('Content-Length'):
@@ -86,8 +89,17 @@ class MatrixSocket:
                            'Content-Type:text/html; encoding=utf8\r\n' +
                            'Connection:close\r\n\r\n')
 
+            if req_path[1].startswith('/reset'):
+                cl.sendall('HTTP/1.1 ' + '200 OK' + '\r\n' +
+                           'Content-Type:text/html; encoding=utf8\r\n' +
+                           'Connection:close\r\n\r\n')
+                reset = True
+
             cl.close()
             self.req_mode = req_mode
+
+            if reset:
+                machine.reset()
         except OSError:
             pass
 
