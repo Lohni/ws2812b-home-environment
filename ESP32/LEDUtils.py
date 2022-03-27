@@ -1,5 +1,6 @@
 import neopixel
 import machine
+import random
 
 #
 # 0  -  1  -  2
@@ -65,7 +66,7 @@ class LEDUtils:
         self.rotation = 1
         self.color = (10, 5, 6)
 
-    async def writeStringToMatrix(self, s: str):
+    def writeStringToMatrix(self, s: str):
         self.np.fill((0, 0, 0))
         for pos, char in enumerate(s):
             seperator = True
@@ -74,7 +75,7 @@ class LEDUtils:
 
             position = font.get(char)
             self.writeCharToMatrix(position, pos, seperator)
-        self.np.write()
+            # self.np.write()
 
     def writeCharToMatrix(self, char: [], char_position, seperator: bool):
         # width of matrix : 32, char width : 3 + 1 padding
@@ -109,13 +110,26 @@ class LEDUtils:
                 elif pos < 6:
                     self.np[startIndex - (row_pos * 2 - 1) - (pos - 3) - 2] = txt_color
                 elif pos < 9:
-                    self.np[startIndex - matrixWidth*2 + (pos - 6)] = txt_color
+                    self.np[startIndex - matrixWidth * 2 + (pos - 6)] = txt_color
                 elif pos < 12:
                     self.np[startIndex - (row_pos + matrixWidth) * 2 - 1 - (pos - 9)] = txt_color
                 else:
                     self.np[startIndex - matrixWidth * 4 + (pos - 12)] = txt_color
 
         return
+
+    def animateTxt(self):
+        for pos, val in enumerate(self.np):
+            col = self.color
+
+            i1 = random.randint(0, 2)
+            i2 = random.randint(0, 2)
+            i3 = random.randint(0, 2)
+
+            if val != (0, 0, 0):
+                a = (col[0] + i1, col[1] + i2, col[2] + i3)
+                self.np[pos] = a
+        self.np.write()
 
     async def runningText(self, s, padding):
         self.np.fill((0, 0, 0))

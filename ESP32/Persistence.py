@@ -143,21 +143,25 @@ class Persistence:
         dataFile = open('sensorData.txt', 'rb')
 
         body = ''
-        while True:
-            line = dataFile.read(5).split(':'.encode())
-            line_start = line[0].decode()
 
-            if line_start == '':
-                break
+        try:
+            while True:
+                line = dataFile.read(5).split(':'.encode())
+                line_start = line[0].decode()
 
-            if line_start.startswith('yy') or line_start.startswith('mm') \
-                    or line_start.startswith('dd') or line_start.startswith('hh'):
-                body = body + line_start + ':' + str(int.from_bytes(line[1], 'big')) + '\n'
-            else:
-                body = body + str(int.from_bytes(line[0], 'big')) + ':' + str(
-                    self.persistedBytesToValues(line[1])) + '\n'
+                if line_start == '':
+                    break
 
-        dataFile.close()
+                if line_start.startswith('yy') or line_start.startswith('mm') \
+                        or line_start.startswith('dd') or line_start.startswith('hh'):
+                    body = body + line_start + ':' + str(int.from_bytes(line[1], 'big')) + '\n'
+                else:
+                    body = body + str(int.from_bytes(line[0], 'big')) + ':' + str(
+                        self.persistedBytesToValues(line[1])) + '\n'
+
+            dataFile.close()
+        except Exception as e:
+            print(e)
         return body
 
     def overrideFile(self, data):

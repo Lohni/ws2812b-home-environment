@@ -3,7 +3,6 @@ import machine
 import dht
 from Persistence import Persistence
 from LEDUtils import LEDUtils
-import uasyncio
 import MatrixSocket
 
 
@@ -75,7 +74,7 @@ class LedMain:
 
                 print(tmp_color)
                 self.ledUtil.color = tmp_color
-                uasyncio.run(self.ledUtil.writeStringToMatrix(tmp))
+                self.ledUtil.writeStringToMatrix(tmp)
 
             current_min = local_time[4]
             print(str(current_min) + ' ... ' + str(self.persistence.last_persisted_minute))
