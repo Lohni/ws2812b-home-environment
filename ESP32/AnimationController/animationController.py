@@ -13,9 +13,6 @@ import random
 # |     |     |
 # 12 -  13 -  14
 #
-import time
-
-import uasyncio
 
 font = {
     "A": [1, 3, 5, 6, 7, 8, 9, 11, 12, 14],
@@ -59,15 +56,23 @@ font = {
     "%": [0, 5, 7, 9, 14]
 }
 
+led_buf = [(0, 0, 0)] * 256
+tmp_buf = [(0, 0, 0)] * 256
+empty_col = (0, 0, 0)
 
-class LEDUtils:
+
+class AnimationController:
     def __init__(self, led_count: int):
         self.np = neopixel.NeoPixel(machine.Pin(2), led_count)
         self.rotation = 1
         self.color = (10, 5, 6)
+        self.block = False
+        # Animation vars
+        self.colorBarPosition = 0
+        self.colorBarWidth = 3
 
     def writeStringToMatrix(self, s: str):
-        self.np.fill((0, 0, 0))
+        self.fill()
         for pos, char in enumerate(s):
             seperator = True
             if s == '.':
@@ -75,7 +80,13 @@ class LEDUtils:
 
             position = font.get(char)
             self.writeCharToMatrix(position, pos, seperator)
-            # self.np.write()
+
+        self.block = True
+        i = 0
+        while i < 256:
+            led_buf[i] = tmp_buf[i]
+            i = i + 1
+        self.block = False
 
     def writeCharToMatrix(self, char: [], char_position, seperator: bool):
         # width of matrix : 32, char width : 3 + 1 padding
@@ -92,44 +103,98 @@ class LEDUtils:
         if self.rotation == 0:
             for pos in char:
                 if pos < 3:
-                    self.np[startIndex + pos] = (10, 5, 6)
+                    tmp_buf[startIndex + pos] = (10, 5, 6)
                 elif pos < 6:
-                    self.np[-startIndex + (matrixWidth * 2 - 1) + (3 - pos)] = txt_color
+                    tmp_buf[-startIndex + (matrixWidth * 2 - 1) + (3 - pos)] = txt_color
                 elif pos < 9:
-                    self.np[startIndex + (matrixWidth * 2) + (6 - pos) * -1] = txt_color
+                    tmp_buf[startIndex + (matrixWidth * 2) + (6 - pos) * -1] = txt_color
                 elif pos < 12:
-                    self.np[-startIndex + (matrixWidth * 4 - 1) + (9 - pos)] = txt_color
+                    tmp_buf[-startIndex + (matrixWidth * 4 - 1) + (9 - pos)] = txt_color
                 else:
-                    self.np[startIndex + (matrixWidth * 4) + (12 - pos) * -1] = txt_color
+                    tmp_buf[startIndex + (matrixWidth * 4) + (12 - pos) * -1] = txt_color
         else:
             startIndex = 224 + startIndex
             row_pos = matrixWidth - (256 - startIndex)
+
             for pos in char:
                 if pos < 3:
-                    self.np[startIndex + pos] = txt_color
+                    tmp_buf[startIndex + pos] = txt_color
                 elif pos < 6:
-                    self.np[startIndex - (row_pos * 2 - 1) - (pos - 3) - 2] = txt_color
+                    tmp_buf[startIndex - (row_pos * 2 - 1) - (pos - 3) - 2] = txt_color
                 elif pos < 9:
-                    self.np[startIndex - matrixWidth * 2 + (pos - 6)] = txt_color
+                    tmp_buf[startIndex - matrixWidth * 2 + (pos - 6)] = txt_color
                 elif pos < 12:
-                    self.np[startIndex - (row_pos + matrixWidth) * 2 - 1 - (pos - 9)] = txt_color
+                    tmp_buf[startIndex - (row_pos + matrixWidth) * 2 - 1 - (pos - 9)] = txt_color
                 else:
-                    self.np[startIndex - matrixWidth * 4 + (pos - 12)] = txt_color
+                    tmp_buf[startIndex - matrixWidth * 4 + (pos - 12)] = txt_color
 
         return
 
+    def fill(self):
+        i = self.np.__len__() - 1
+        while i >= 0:
+            tmp_buf[i] = empty_col
+            i = i - 1
+
+    # Animation Coords
+    # Y
+    # 7
+    # |
+    # |
+    # |
+    # |
+    # |
+    # |
+    # 0 -- -- -- -- -- -- -- -- -> 31 X
+
     def animateTxt(self):
-        for pos, val in enumerate(self.np):
-            col = self.color
+        # avoid long for loops
+        if not self.block:
+            for i in range(256):
+                if led_buf != empty_col:
+                    self.np[i] = led_buf[i]
 
-            i1 = random.randint(0, 2)
-            i2 = random.randint(0, 2)
-            i3 = random.randint(0, 2)
+            for i in range(3):
+                self.animateColorBar(self.colorBarPosition - i)
 
-            if val != (0, 0, 0):
-                a = (col[0] + i1, col[1] + i2, col[2] + i3)
-                self.np[pos] = a
-        self.np.write()
+            self.np.write()
+
+        if self.colorBarPosition == 31:
+            self.colorBarPosition = 0
+        else:
+            self.colorBarPosition += 1
+
+    def animateRandCol(self, pos):
+        col = self.color
+
+        i1 = 2 - random.randint(0, 3)
+        i2 = 2 - random.randint(0, 3)
+        i3 = 2 - random.randint(0, 3)
+
+        a = (col[0] + i1, col[1] + i2, col[2] + i3)
+        self.np[pos] = a
+
+    def animateColorBar(self, pos):
+        # currently only for rotation = 1
+        # colorBarPosition is right edge
+
+        if pos > 0:
+            # Even
+            y0 = 31 - pos
+
+            c = (self.color[0] + 5, self.color[1] + 5, self.color[2] + 5)
+            if self.np[y0] != empty_col:
+                self.np[y0] = c
+            # self.np[y0 * 3] = c
+            # self.np[y0 * 5] = c
+            # self.np[y0 * 7] = c
+
+    def dot(self):
+        for i in range(256):
+            self.np[i] = (2, 2, 2)
+            if i > 0:
+                self.np[i - 1] = (0, 0, 0)
+            self.np.write()
 
     async def runningText(self, s, padding):
         self.np.fill((0, 0, 0))

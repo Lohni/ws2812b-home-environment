@@ -2,15 +2,13 @@ import time
 import machine
 import dht
 from Persistence import Persistence
-from LEDUtils import LEDUtils
 import MatrixSocket
 
 
-class LedMain:
+class MainController:
     def __init__(self, mSocket: MatrixSocket):
         self.socket = mSocket
         self.dhtSensor = dht.DHT22(machine.Pin(26))
-        self.ledUtil = LEDUtils(256)
         self.persistence = Persistence()
         self.matrix_mode = 'tmp'
         self.compare_interval_min = 5
@@ -41,14 +39,15 @@ class LedMain:
             # Set Color
             if self.matrix_mode == 'tmp':
                 comparison_timestamp = local_time
-                tmp_color = (10, 5, 6)
+                tmp_color = (7, 10, 5)
 
                 last_comp_val = self.last_compare_value[2] + 5
                 if last_comp_val == 60:
                     last_comp_val = 0
 
                 if comparison_timestamp[4] % 5 == 0 and last_comp_val < comparison_timestamp[4] \
-                        or self.last_compare_value[0] == 0 or 0 == comparison_timestamp[4] and self.last_compare_value[2] == 50:
+                        or self.last_compare_value[0] == 0 or 0 == comparison_timestamp[4] and self.last_compare_value[
+                    2] == 50:
                     instant = time.mktime(comparison_timestamp) - (comparison_timestamp[4] % 5) * 60
 
                     if self.last_compare_value[0] != 0:
@@ -73,8 +72,9 @@ class LedMain:
                 # Todo: calc color hues https://www.colorspire.com/rgb-color-wheel/
 
                 print(tmp_color)
-                self.ledUtil.color = tmp_color
-                self.ledUtil.writeStringToMatrix(tmp)
+                #self.ledUtil.color = tmp_color
+                #self.ledUtil.writeStringToMatrix(tmp)
+                #Todo: write data to animationController
 
             current_min = local_time[4]
             print(str(current_min) + ' ... ' + str(self.persistence.last_persisted_minute))
