@@ -54,6 +54,7 @@ void LedSocket::connectToNetwork() {
     Serial.print("IP Address: ");Serial.println(WiFi.localIP());
 
     do {
+        delay(1000);
         time(&now);
         localtime_r(&now, &t);
         Serial.print("Waiting for SNTP");
@@ -83,7 +84,12 @@ void LedSocket::listen() {
 
             if (req_method == "POST") {
                 if (uri == "/storage") {
-                    Serial.println(req.c_str());
+                    int body_pos = req.find("\r\n\r\n");
+                    std::string data = req.substr(body_pos + 4 , req.length());
+
+                    Serial.println(data.c_str());
+
+                    Storage.overrideFile(data);
                 }
 
             } else if (req_method == "GET") {

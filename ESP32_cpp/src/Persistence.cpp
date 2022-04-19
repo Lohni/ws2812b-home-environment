@@ -3,6 +3,8 @@
 #include <sstream>
 #include <iostream>
 
+Persistence Storage;
+
 uint16_t Persistence::sensorDataToBytes(float tmp, float hum) {
         // Byte-Composition for Sensor-Data:
         // AAAABBBB | BCCCCCCC
@@ -10,11 +12,11 @@ uint16_t Persistence::sensorDataToBytes(float tmp, float hum) {
         // B -> 5Bit for Temp. dezimal -> 0-32
         // C -> 7Bit for Humidity -> 0-100 / 128
         uint8_t tmp_dec = std::floor(tmp);
-        uint8_t tmp_comma = std::floor((tmp - tmp_dec) * 10);
+        uint8_t tmp_comma = (tmp - tmp_dec) * 10;
         uint8_t hum_dec = std::floor(hum);
 
         uint8_t decLSB = tmp_dec & 1;
-        uint8_t decRest = (tmp_dec > 1) & 0b00001111;
+        uint8_t decRest = (tmp_dec >> 1) & 0b00001111;
         uint8_t hum_byte = hum_dec & 0b01111111;
         
         uint8_t firstByte = (tmp_comma << 4) | decRest;
@@ -24,14 +26,16 @@ uint16_t Persistence::sensorDataToBytes(float tmp, float hum) {
         return bytes_to_persist;
 }
 
-float* Persistence::persistedBytesToValue(uint8_t firstByte, uint8_t secondByte) {
+void Persistence::persistedBytesToValue(uint8_t firstByte, uint8_t secondByte, float* ret) {
         float tmp_comma = (firstByte >> 4) / 10;
         uint8_t tmp_dec = (secondByte >> 7) | ((firstByte & 0b00001111) << 1);
         uint8_t humidity = secondByte & 0b01111111;
 
-        float ret[2] = {tmp_comma + tmp_dec, humidity};
+        Serial.println(tmp_comma);
+        Serial.println(tmp_dec);
 
-        return ret;
+        ret[0] = tmp_comma + tmp_dec; 
+        ret[1] = (float) humidity;
 }
 
 void Persistence::persistValue(float tmp, float hum, tm t) {
@@ -155,7 +159,9 @@ float* Persistence::getPersistedDataByTimestamp(tm t) {
 
         sensorData.close();
         if (bytesRead > 0) {
-                return persistedBytesToValue(line[3], line[4]);
+                float ret[2];
+                persistedBytesToValue(line[3], line[4], ret);
+                return ret;
         }
 
         float empty[2] = {0 , 0};
@@ -186,8 +192,11 @@ std::string Persistence::decodeWholeFile() {
                                 uint16_t val = line[3] << 8 | line[4];
                                 body = body + (char) line[0] + (char) line[1] + (char) line[2] + intToString(val) + "\n";
                         } else {
-                                uint16_t persistedMin = line[0] << 8 || line[1];
-                                float* values = persistedBytesToValue(line[3], line[4]);
+                                uint16_t persistedMin = line[0] << 8 | line[1];
+                                Serial.println(persistedMin);
+                                float values[2];
+                                persistedBytesToValue(line[3], line[4], values);
+
                                 body = body + intToString(persistedMin) + (char) line[2] + floatToString(values[0]) + "," + floatToString(values[1]) + "\n";
                         }
                 } else {
@@ -196,7 +205,8 @@ std::string Persistence::decodeWholeFile() {
         }
 
         sensorData.close();
-        
+
+        Serial.println(body.c_str());
         return body;
 }
 
@@ -215,12 +225,12 @@ void Persistence::overrideFile(std::string body) {
 
         size_t pos = 0;
         std::string line;
-        do {
+        while (pos != std::string::npos) {
                 pos = body.find('\n');
 
                 if (pos != std::string::npos) {
-                        line = body.substr(0, pos);
-                        body.erase(0, pos + 1);
+                        line = body.substr(0, pos - 1);
+                        body.erase(0, pos+1);
                 } else {
                         line = body;
                 }
@@ -236,37 +246,52 @@ void Persistence::overrideFile(std::string body) {
                         iss >> val;
 
                         const char* pre = line_start.c_str();
+
                         sensorData.write((uint8_t) pre[0]);
                         sensorData.write((uint8_t) pre[1]);
                         sensorData.write((uint8_t) ':');
-                        sensorData.write(val);
+                        sensorData.write((uint8_t) (val >> 8));
+                        sensorData.write((uint8_t) val & 0b0000000011111111);
                 } else {
                         int tmp_sep = line_end.find(',');
                         std::string tmp_string = line_end.substr(0, tmp_sep);
                         int comma_pos = tmp_string.find('.');
 
-                        uint8_t tmp_dec;
-                        uint8_t tmp_comma;
-                        std::istringstream tdec(tmp_string.substr(0, comma_pos));
-                        std::istringstream tcomma(tmp_string.substr(comma_pos + 1, tmp_string.size() - 1));
+                        std::string sdec = tmp_string.substr(0, comma_pos);
+                        std::string scomma = tmp_string.substr(comma_pos + 1, 1);
+                        std::string shum = line_end.substr(tmp_sep + 1, 2);
+
+                        uint16_t tmp_dec;
+                        uint16_t tmp_comma;
+                        uint16_t hum_dec;
+                        std::istringstream tdec(sdec);
+                        std::istringstream tcomma(scomma);
+                        std::istringstream thum(shum);
 
                         tdec >> tmp_dec;
                         tcomma >> tmp_comma;
-                        
-                        float tmp = tmp_dec + tmp_comma / 10;
-                        float hum = (float) ((int) line_end.substr(tmp_sep + 1, line_end.size() - 1).c_str());
-                        
+                        thum >> hum_dec;
+
+                        float tmp = tmp_dec + (tmp_comma / 10);
+                        float hum = (float) hum_dec;
+
                         uint16_t ls;
                         std::istringstream iss(line_start);
                         iss >> ls;
 
-                        sensorData.write(ls);
+                        uint16_t dataBytes = sensorDataToBytes(tmp, hum);
+                        
+                        Serial.println(dataBytes);
+
+                        sensorData.write((uint8_t) (ls >> 8));
+                        sensorData.write((uint8_t) (ls & 0b0000000011111111));
                         sensorData.write((uint8_t) ':');
-                        sensorData.write(sensorDataToBytes(tmp, hum));
+                        sensorData.write((uint8_t) (dataBytes >> 8));
+                        sensorData.write((uint8_t) (dataBytes & 0b0000000011111111));
                 }       
 
 
-        } while (pos != std::string::npos);
+        }
 
         sensorData.close();
         Serial.println("Overwritten sensorData.dat");

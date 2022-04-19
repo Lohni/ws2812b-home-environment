@@ -1,13 +1,13 @@
 #include <SPIFFS.h>
 #include <time.h>
 
-#define STORAGE_FILENAME "sensorData.dat"
+#define STORAGE_FILENAME "/sensorData.dat"
 
 class Persistence {
     private:
         int last_persisted_minute = -1;
         uint16_t sensorDataToBytes(float tmp, float hum);
-        float* persistedBytesToValue(uint8_t firstByte, uint8_t secondByte);
+        void persistedBytesToValue(uint8_t firstByte, uint8_t secondByte, float* ret);
         void validateFileStructure(File sensorData, uint16_t curr_identifier_value, const char* id);
 
         std::string intToString(uint16_t value);
@@ -16,7 +16,7 @@ class Persistence {
         void persistValue(float tmp, float hum, tm t);
         float* getPersistedDataByTimestamp(tm t);
         std::string decodeWholeFile();
-        void overrideFile(std::string);
+        void overrideFile(std::string body);
 };
 
 extern Persistence Storage;
