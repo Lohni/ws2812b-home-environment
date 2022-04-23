@@ -57,7 +57,7 @@ void LedSocket::connectToNetwork() {
         delay(1000);
         time(&now);
         localtime_r(&now, &t);
-        Serial.print("Waiting for SNTP");
+        Serial.println("Waiting for SNTP");
     } while(t.tm_year+1900 == 1970);
 
     Serial.print("System time set: ");

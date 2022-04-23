@@ -12,7 +12,7 @@ uint16_t Persistence::sensorDataToBytes(float tmp, float hum) {
         // B -> 5Bit for Temp. dezimal -> 0-32
         // C -> 7Bit for Humidity -> 0-100 / 128
         uint8_t tmp_dec = std::floor(tmp);
-        uint8_t tmp_comma = (tmp - tmp_dec) * 10;
+        uint8_t tmp_comma = ( (tmp - tmp_dec)) * 10 + 0.5f;
         uint8_t hum_dec = std::floor(hum);
 
         uint8_t decLSB = tmp_dec & 1;
@@ -27,12 +27,10 @@ uint16_t Persistence::sensorDataToBytes(float tmp, float hum) {
 }
 
 void Persistence::persistedBytesToValue(uint8_t firstByte, uint8_t secondByte, float* ret) {
-        float tmp_comma = (firstByte >> 4) / 10;
+        float tmp_comma = ((float)(firstByte >> 4)) / 10;
+
         uint8_t tmp_dec = (secondByte >> 7) | ((firstByte & 0b00001111) << 1);
         uint8_t humidity = secondByte & 0b01111111;
-
-        Serial.println(tmp_comma);
-        Serial.println(tmp_dec);
 
         ret[0] = tmp_comma + tmp_dec; 
         ret[1] = (float) humidity;
@@ -272,7 +270,7 @@ void Persistence::overrideFile(std::string body) {
                         tcomma >> tmp_comma;
                         thum >> hum_dec;
 
-                        float tmp = tmp_dec + (tmp_comma / 10);
+                        float tmp = tmp_dec + (((float) tmp_comma) / 10);
                         float hum = (float) hum_dec;
 
                         uint16_t ls;
@@ -280,8 +278,6 @@ void Persistence::overrideFile(std::string body) {
                         iss >> ls;
 
                         uint16_t dataBytes = sensorDataToBytes(tmp, hum);
-                        
-                        Serial.println(dataBytes);
 
                         sensorData.write((uint8_t) (ls >> 8));
                         sensorData.write((uint8_t) (ls & 0b0000000011111111));
@@ -299,7 +295,7 @@ void Persistence::overrideFile(std::string body) {
 
 std::string Persistence::intToString(uint16_t value) {
         std::string res;
-        while (value > 10) {
+        while (value >= 10) {
                 uint8_t number = value % 10;
                 res = res + (char) (number + 48);
                 value = value / 10;
@@ -314,7 +310,7 @@ std::string Persistence::floatToString(float value) {
         std::string res_dec = intToString(floorf(value));
 
         float comma = value - floorf(value);
-        uint8_t firstComma = floorf(comma * 10);
+        uint8_t firstComma = floorf(comma * 10 + 0.5f);
 
         return res_dec + "." + (char) (firstComma + 48);
 }
