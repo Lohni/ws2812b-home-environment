@@ -50,7 +50,8 @@ void Persistence::persistValue(float tmp, float hum, tm t) {
 
         uint16_t data_bytes = sensorDataToBytes(tmp, hum);
 
-        File sensorData = SPIFFS.open(STORAGE_FILENAME, FILE_WRITE);
+        File sensorData = SPIFFS.open(STORAGE_FILENAME, "ab+");
+        sensorData.seek(0);
 
         if (!sensorData) {
                 Serial.println("Failed to open Sensor-Datafile");
@@ -59,8 +60,10 @@ void Persistence::persistValue(float tmp, float hum, tm t) {
         
         validateFileStructure(sensorData, year, YEAR_ID);
         validateFileStructure(sensorData, month, MONTH_ID);
-        validateFileStructure(sensorData, hour, HOUR_ID);
         validateFileStructure(sensorData, day, DAY_ID);
+        validateFileStructure(sensorData, hour, HOUR_ID);
+        
+        Serial.println("Validated File-Structure");
 
         while (true) {
                 char line[5];
@@ -72,13 +75,15 @@ void Persistence::persistValue(float tmp, float hum, tm t) {
                                 break;
                         }
                 } else if (bytesRead == 0) {
-                        sensorData.write(min);
+                        sensorData.write((uint8_t)(min >> 8));
+                        sensorData.write((uint8_t)(min & 0b0000000011111111));
                         sensorData.write(':');
-                        sensorData.write(data_bytes);
+                        sensorData.write((uint8_t)(data_bytes >> 8));
+                        sensorData.write((uint8_t)(data_bytes & 0b0000000011111111));
                         last_persisted_minute = min;
                         break;
                 } else {
-                        Serial.println('Wrong number of bytes read: ' + bytesRead);
+                        Serial.println("Wrong number of bytes read: " + bytesRead);
                         break;
                 }
         }
@@ -87,43 +92,53 @@ void Persistence::persistValue(float tmp, float hum, tm t) {
 }
 
 void Persistence::validateFileStructure(File sensorData, uint16_t curr_identifier_value, const char* id) {
-        while (true) {
-                char line[5]; 
-                int bytesRead = sensorData.readBytes(line, 5);
-                if (bytesRead == 5) {
-                        if (line[0] == id[0] && line[1] == id[1]) {
-                                uint16_t a = line[3] << 8 | line[4];
-                                if (a == curr_identifier_value) {
-                                    break;    
+        try {
+                uint8_t line[5]; 
+                while (true) { 
+                        int bytesRead = sensorData.read(line, 5);
+                        Serial.println(line[0]);
+                        if (bytesRead == 5) {
+                                if (line[0] == (uint8_t)id[0] && line[1] == (uint8_t)id[1]) {
+                                        uint16_t a = line[3] << 8 | line[4];
+                                        if (a == curr_identifier_value) {
+                                            break;    
+                                        }
                                 }
-                        }
-                } else if (bytesRead == 0) {
-                        for (int i = 0; i < 3; i++) {
-                                sensorData.write(id[i]);
-                        }
+                        } else if (bytesRead == 0) {
+                                for (int i = 0; i < 3; i++) {
+                                        sensorData.write((uint8_t)id[i]);
+                                }
 
-                        sensorData.write(curr_identifier_value);
+                                sensorData.write((uint8_t)(curr_identifier_value >> 8));
+                                sensorData.write((uint8_t)(curr_identifier_value & 0b0000000011111111));
 
-                        Serial.println('Created Entry: ' + id);
-                        break;
-                } else {
-                        Serial.println('Wrong number of bytes read: ' + bytesRead);
-                        break;
+                                Serial.print("Created Entry: ");Serial.print(id[0]);Serial.println(id[1]);
+                                break;
+                        } else {
+                                Serial.println("Wrong number of bytes read: " + bytesRead);
+                                break;
+                        }
                 }
+        } catch (std::exception& e) {
+                Serial.println(e.what());
         }
 }
 
-float* Persistence::getPersistedDataByTimestamp(tm t) {
+float* Persistence::getPersistedDataByTimestamp(tm t, float* ret) {
         if(!SPIFFS.begin(true)){
                 Serial.println("An Error has occurred while mounting SPIFFS");
-                return NULL;
+                ret[0] = 0.0f;
+                ret[1] = 0.0f; 
+                return ret;
         }
 
         File sensorData = SPIFFS.open(STORAGE_FILENAME, FILE_READ);
 
         if (!sensorData) {
                 Serial.println("Failed to open Sensor-Datafile");
-                return NULL;
+                ret[0] = 0.0f;
+                ret[1] = 0.0f; 
+                return ret;
         }
 
         uint16_t year = t.tm_year + 1900;
@@ -132,6 +147,8 @@ float* Persistence::getPersistedDataByTimestamp(tm t) {
         uint16_t hour = t.tm_hour;
 
         uint16_t dataTime = t.tm_min;
+
+        Serial.println(dataTime);
 
         uint8_t mtc[4][5] = {{YEAR_ID[0], YEAR_ID[1], YEAR_ID[2], year >> 8, year & 0b0000000011111111},
                              {MONTH_ID[0], MONTH_ID[1], MONTH_ID[2], month >> 8, month & 0b0000000011111111},
@@ -148,22 +165,26 @@ float* Persistence::getPersistedDataByTimestamp(tm t) {
                                 currMtcIndex++;
                         }
                 } else {
-                        uint16_t persistedMin = line[0] << 8 || line[1];
+                        uint16_t persistedMin = line[0] << 8 | line[1];
                         if (persistedMin == dataTime) {
                                 break;
                         }
                 }
+                bytesRead = sensorData.read(line, 5);
         }
 
         sensorData.close();
         if (bytesRead > 0) {
-                float ret[2];
                 persistedBytesToValue(line[3], line[4], ret);
-                return ret;
+        } else {
+                ret[0] = 0.0f;
+                ret[1] = 0.0f;     
         }
 
-        float empty[2] = {0 , 0};
-        return empty;
+        Serial.println(ret[0]);
+        Serial.println(ret[1]);
+
+        return ret;
 }
 
 std::string Persistence::decodeWholeFile() {

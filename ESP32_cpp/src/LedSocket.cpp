@@ -5,6 +5,8 @@
 #include <sntp.h>
 #include <time.h>
 #include <Persistence.h>
+#include <sstream>
+#include <iostream>
 
 time_t now;
 tm t;        
@@ -91,7 +93,6 @@ void LedSocket::listen() {
 
                     Storage.overrideFile(data);
                 }
-
             } else if (req_method == "GET") {
                 if (uri == "/storage") {
                     body = Storage.decodeWholeFile();

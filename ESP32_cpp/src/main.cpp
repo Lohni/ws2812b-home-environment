@@ -38,7 +38,7 @@ void loop() {
       Serial.println("Failed to read from DHT22-Sensor");
     }
 
-    Controller.writeStringToMatrix("TEST");
+    //Controller.writeStringToMatrix("TEST");
     Socket.listen();
 
     delay(1000);
