@@ -5,18 +5,19 @@
 
 class Persistence {
     private:
-        int last_persisted_minute = -1;
         uint16_t sensorDataToBytes(float tmp, float hum);
         void persistedBytesToValue(uint8_t firstByte, uint8_t secondByte, float* ret);
         void validateFileStructure(File sensorData, uint16_t curr_identifier_value, const char* id);
 
-        std::string intToString(uint16_t value);
-        std::string floatToString(float value);
+
     public:
+        int last_persisted_minute = -1;
         void persistValue(float tmp, float hum, tm t);
         float* getPersistedDataByTimestamp(tm t, float* ret);
         std::string decodeWholeFile();
         void overrideFile(std::string body);
+        std::string intToString(uint16_t value);
+        std::string floatToString(float value);
 };
 
 extern Persistence Storage;

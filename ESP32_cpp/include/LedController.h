@@ -1,4 +1,5 @@
 #include <map>
+#include <FastLED.h>
 
 #define MATRIX_WIDTH 32
 #define CHAR_WIDTH 3
@@ -7,15 +8,16 @@
 class LedController {
     private:
         boolean blockAnimation = false;
-        void animateColorBar();
         void clearBuf();
         void overrideLedBuffer();
 
     public:
+        CRGB currColor = CRGB::Amethyst;
         void init();
         void runningDot();
         void writeStringToMatrix(std::string text);
         void writeCharToMatrix(char letter, int position, boolean seperator);
+        void animateColorBar();
 };
 
 extern LedController Controller;

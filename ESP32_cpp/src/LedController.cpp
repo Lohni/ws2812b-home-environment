@@ -1,4 +1,3 @@
-#include <FastLED.h>
 #include <LedController.h>
 #include <cstring>
 #include <string>
@@ -72,6 +71,7 @@ void LedController::init() {
 void LedController::clearBuf() {
     for (int i = 0; i < NUM_LEDS; i++) {
         led_buf[i] = CRGB::Black;
+        tmp_buf[i] = CRGB::Black;
     }
 }
 
@@ -101,7 +101,7 @@ void LedController::writeStringToMatrix(std::string text) {
         boolean seperator = true;
 
         if (letter == '.') {
-            seperator = false;
+            //seperator = false;
         }
 
         writeCharToMatrix(letter, i, seperator);
@@ -147,17 +147,21 @@ void LedController::writeCharToMatrix(char letter, int position, boolean seperat
         } else if (ROTATION == 1) {
 
             if (letter_coord < 3) {
-                tmp_buf[startIndex + letter_coord] = CRGB::Aqua;
+                tmp_buf[startIndex + letter_coord] = currColor;
             } else if (letter_coord < 6) {
-                tmp_buf[startIndex - (row_pos * 2 - 1) - (letter_coord - 3) - 2] = CRGB::Aqua;
+                tmp_buf[startIndex - (row_pos * 2 - 1) - (letter_coord - 3) - 2] = currColor;
             } else if (letter_coord < 9) {
-                tmp_buf[startIndex - MATRIX_WIDTH * 2 + (letter_coord - 6)] = CRGB::Aqua;
+                tmp_buf[startIndex - MATRIX_WIDTH * 2 + (letter_coord - 6)] = currColor;
             } else if (letter_coord < 12) {
-                tmp_buf[startIndex - (row_pos + MATRIX_WIDTH) * 2 - 1 - (letter_coord - 9)] = CRGB::Aqua;
+                tmp_buf[startIndex - (row_pos + MATRIX_WIDTH) * 2 - 1 - (letter_coord - 9)] = currColor;
             } else {
-                tmp_buf[startIndex - MATRIX_WIDTH * 4 + (letter_coord - 12)] = CRGB::Aqua;
+                tmp_buf[startIndex - MATRIX_WIDTH * 4 + (letter_coord - 12)] = currColor;
             }
         }
     } while (pos != std::string::npos);
+
+}
+
+void LedController::animateColorBar() {
 
 }

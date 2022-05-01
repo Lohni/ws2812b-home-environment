@@ -158,8 +158,8 @@ float* Persistence::getPersistedDataByTimestamp(tm t, float* ret) {
         uint8_t line[5] = {255, 255, 255, 255, 255};
         int currMtcIndex = 0;
         int bytesRead = sensorData.read(line, 5);
-        while (bytesRead >= 0 || line[0] == 255) {
-                if (currMtcIndex < 4) {
+        while (bytesRead > 0) {
+                if (currMtcIndex < 4 && bytesRead > 0) {
                         if (line[0] == mtc[currMtcIndex][0] && line[1] == mtc[currMtcIndex][1] && line[2] == mtc[currMtcIndex][2] 
                                 && line[3] == mtc[currMtcIndex][3] && line[4] == mtc[currMtcIndex][4]) {
                                 currMtcIndex++;
@@ -171,7 +171,7 @@ float* Persistence::getPersistedDataByTimestamp(tm t, float* ret) {
                         }
                 }
                 bytesRead = sensorData.read(line, 5);
-        }
+        }     
 
         sensorData.close();
         if (bytesRead > 0) {
