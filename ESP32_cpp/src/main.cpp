@@ -16,8 +16,11 @@ DHT dht(DHT_PIN, DHT_TYPE);
 time_t now_;
 tm t_;
 
-uint8_t last_compare_value = 255;
+
 millisDelay run;
+
+uint8_t lastCompareMinute = 255;
+float lastCompareValues[2] = {255.0f, 255.0f};
 
 void setup() {
     // put your setup code here, to run once:
@@ -50,14 +53,21 @@ void loop() {
           
           ss << hum;
           std::string hum_txt(ss.str());
+
     } else {
       Serial.println("Failed to read from DHT22-Sensor");
       tmp = 0.0f;
       hum = 0.0f;
     }
    
+    if (lastCompareValues[0] == 255.0f) {
+      lastCompareValues[0] = tmp;
+      lastCompareValues[1] = hum;
+    }
+
+
     //Decide color for matrix
-    if ((t_.tm_min % 5 == 0 && t_.tm_min != last_compare_value) || last_compare_value == 255) {
+    if ((t_.tm_min % 5 == 0 && t_.tm_min != lastCompareMinute) || lastCompareMinute == 255) {
       tm target_timestamp = t_;
 
       if (t_.tm_min % 5 == 0) {
@@ -67,26 +77,25 @@ void loop() {
         target_timestamp.tm_min = t_.tm_min - t_.tm_min % 5;
       }
       
-      float pValues[2];
-      Storage.getPersistedDataByTimestamp(target_timestamp, pValues);
+      Storage.getPersistedDataByTimestamp(target_timestamp, lastCompareValues);
 
-      if (Socket.currMode ==  TMP) {
-        float diff = pValues[0] - tmp;
+      lastCompareMinute = t_.tm_min;
+    }
+
+    if (Socket.currMode ==  TMP) {
+        float diff = lastCompareValues[0] - tmp;
 
         if (diff > 0) {
-          Controller.currColor = CRGB::SkyBlue;
+          Controller.currColor = CRGB::Blue;
         } else if (diff == 0) {
           Controller.currColor = CRGB::Amethyst;
         } else {
           Controller.currColor = CRGB::IndianRed;
         }
       } else if (Socket.currMode == HUM) {
-        float diff = pValues[1] - hum;
+        float diff = lastCompareValues[1] - hum;
         //Todo: Hum colors
       }
-
-      last_compare_value = t_.tm_min;
-    }
 
     if (Socket.currMode == TMP) {
       Controller.writeStringToMatrix(Storage.floatToString(tmp));
@@ -103,6 +112,8 @@ void loop() {
     long int t2 = millis();
     Serial.print("Time taken by the task: "); Serial.print(t2-t1); Serial.println(" milliseconds");
   }
+  
   //Animation
+  Controller.animateColorBar();
   delay(100);
 }

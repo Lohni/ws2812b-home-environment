@@ -163,5 +163,13 @@ void LedController::writeCharToMatrix(char letter, int position, boolean seperat
 }
 
 void LedController::animateColorBar() {
+    for (int i = 0; i < NUM_LEDS; i++) {
+        CRGB pos = tmp_buf[i];
+        if (pos.r != 0 && pos.g != 0 && pos.b != 0) {
+            
 
+
+        }
+        led_buf[i] = pos;
+    }
 }
